@@ -2,16 +2,13 @@
 
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Laravel\Fortify\Features;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canRegister' => Features::enabled(Features::registration()),
-    ]);
+    return Inertia::render('Chat/Lobby');
 })->name('home');
 
-Route::get('dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/chat', function () {
+    return Inertia::render('Chat/Chat');
+})->name('home');
 
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';
