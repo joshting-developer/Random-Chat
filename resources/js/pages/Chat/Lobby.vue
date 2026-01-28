@@ -34,7 +34,7 @@ useChatSocket({
     },
     onMatchFound: (payload) => {
         if (payload && typeof payload === 'object' && 'roomKey' in payload) {
-            router.visit(`/chat/rooms/${payload.roomKey}`);
+            router.visit(`/rooms/${payload.roomKey}`);
         }
     },
 });
@@ -135,8 +135,7 @@ const cancelMatching = async () => {
                     <div class="mt-6 flex flex-wrap items-center gap-3">
                         <div v-if="matchState === 'room'"
                             class="inline-flex items-center gap-3 rounded-full border border-amber-200/80 bg-amber-50/80 px-4 py-2 text-sm font-semibold text-amber-900 shadow-sm">
-                            <span
-                                class="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-amber-700"
+                            <span class="h-4 w-4 animate-spin rounded-full border-2 border-amber-300 border-t-amber-700"
                                 aria-hidden="true" />
                             <span>已配對成功, 正在進入聊天室</span>
                         </div>

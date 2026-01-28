@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { useChatIdentity } from '@/composables/useChatIdentity';
 
@@ -24,6 +24,48 @@ const messages = ref<ChatMessage[]>([
 
 const input = ref('');
 const displayUserKey = computed(() => userKey.value || '載入中...');
+const roomKey = computed(() => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    const match = window.location.pathname.match(/\/chat\/rooms\/([a-f0-9-]+)/i);
+
+    return match ? match[1] : null;
+});
+
+const getEcho = () => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    return (window as { Echo?: { private: (channel: string) => unknown; leave: (channel: string) => void } })
+        .Echo ?? null;
+};
+
+onMounted(() => {
+    if (!roomKey.value) {
+        return;
+    }
+
+    const echo = getEcho();
+
+    if (!echo) {
+        return;
+    }
+
+    echo.private(`chat-${roomKey.value}`);
+});
+
+onBeforeUnmount(() => {
+    const echo = getEcho();
+
+    if (!echo || !roomKey.value) {
+        return;
+    }
+
+    echo.leave(`chat-${roomKey.value}`);
+});
 
 const sendMessage = () => {
     const trimmed = input.value.trim();

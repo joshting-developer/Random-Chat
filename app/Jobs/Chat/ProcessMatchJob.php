@@ -3,6 +3,7 @@
 namespace App\Jobs\Chat;
 
 use App\Enums\ChatMatchState;
+use App\Events\Chat\MatchFound;
 use App\Events\Chat\MatchQueue;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -61,18 +62,18 @@ class ProcessMatchJob implements ShouldQueue
             $room_key = (string) Str::uuid();
             $members = [$this->user_key, $partner_key];
 
-            Cache::forever(self::ROOM_PREFIX . $room_key, [
+            Cache::forever(self::ROOM_PREFIX.$room_key, [
                 'roomKey' => $room_key,
                 'members' => $members,
             ]);
 
-            Cache::forever(self::ROOM_USER_PREFIX . $this->user_key, $room_key);
-            Cache::forever(self::ROOM_USER_PREFIX . $partner_key, $room_key);
+            Cache::forever(self::ROOM_USER_PREFIX.$this->user_key, $room_key);
+            Cache::forever(self::ROOM_USER_PREFIX.$partner_key, $room_key);
 
             Redis::lrem(self::QUEUE_KEY, 0, $this->user_key);
             Redis::lrem(self::QUEUE_KEY, 0, $partner_key);
 
-            $this->noticeUserMatched($members);
+            $this->noticeUserMatched($room_key, $members);
         } catch (LockTimeoutException) {
             // 保持安靜，等待下一次 job 重試
         } finally {
@@ -85,10 +86,11 @@ class ProcessMatchJob implements ShouldQueue
      *
      * @param  array<int, string>  $keys
      */
-    private function noticeUserMatched(array $keys)
+    private function noticeUserMatched(string $room_key, array $keys): void
     {
         foreach ($keys as $key) {
             event(new MatchQueue($key, ChatMatchState::Room));
+            event(new MatchFound($key, $room_key));
         }
     }
 
