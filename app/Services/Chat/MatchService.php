@@ -26,7 +26,8 @@ class MatchService
             // block(秒)：最多等 2 秒取得鎖（避免尖峰時大量 timeout）
             $lock->block(2);
 
-            Redis::rpush(self::QUEUE_KEY, $user_key);
+            $this->leaveQueue($user_key);
+            $this->joinQueue($user_key);
         } finally {
             optional($lock)->release();
         }
@@ -34,10 +35,6 @@ class MatchService
 
     /**
      * 取消配對：把自己從 queue 移除
-     *
-     * @param string $user_key
-     *
-     * @return void
      */
     public function cancel(string $user_key): void
     {
@@ -48,9 +45,25 @@ class MatchService
             // block(秒)：最多等 2 秒取得鎖（避免尖峰時大量 timeout）
             $lock->block(2);
 
-            Redis::lrem(self::QUEUE_KEY, 0, $user_key);
+            $this->leaveQueue($user_key);
         } finally {
             optional($lock)->release();
         }
+    }
+
+    /**
+     * 將使用者加入隊列
+     */
+    private function joinQueue(string $user_key): void
+    {
+        Redis::rpush(self::QUEUE_KEY, $user_key);
+    }
+
+    /**
+     * 將使用者移除隊列
+     */
+    private function leaveQueue(string $user_key): void
+    {
+        Redis::lrem(self::QUEUE_KEY, 0, $user_key);
     }
 }
