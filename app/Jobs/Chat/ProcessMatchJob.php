@@ -55,31 +55,40 @@ class ProcessMatchJob implements ShouldQueue
             $partner_key = $this->findPartner($queue, $this->user_key);
 
             if (! $partner_key) {
-                Log::info("No partner found for user {$this->user_key}");
-
                 return;
             }
 
             $room_key = (string) Str::uuid();
+            $members = [$this->user_key, $partner_key];
 
-            Cache::forever(self::ROOM_PREFIX.$room_key, [
+            Cache::forever(self::ROOM_PREFIX . $room_key, [
                 'roomKey' => $room_key,
-                'members' => [$this->user_key, $partner_key],
+                'members' => $members,
             ]);
 
-            Cache::forever(self::ROOM_USER_PREFIX.$this->user_key, $room_key);
-            Cache::forever(self::ROOM_USER_PREFIX.$partner_key, $room_key);
+            Cache::forever(self::ROOM_USER_PREFIX . $this->user_key, $room_key);
+            Cache::forever(self::ROOM_USER_PREFIX . $partner_key, $room_key);
 
             Redis::lrem(self::QUEUE_KEY, 0, $this->user_key);
             Redis::lrem(self::QUEUE_KEY, 0, $partner_key);
 
-            Log::info("Matched users {$this->user_key} and {$partner_key} into room {$room_key}");
-            event(new MatchQueue($this->user_key, ChatMatchState::Room));
-            event(new MatchQueue($partner_key, ChatMatchState::Room));
+            $this->noticeUserMatched($members);
         } catch (LockTimeoutException) {
             // 保持安靜，等待下一次 job 重試
         } finally {
             optional($lock)->release();
+        }
+    }
+
+    /**
+     * 通知使用者已配對成功
+     *
+     * @param  array<int, string>  $keys
+     */
+    private function noticeUserMatched(array $keys)
+    {
+        foreach ($keys as $key) {
+            event(new MatchQueue($key, ChatMatchState::Room));
         }
     }
 
