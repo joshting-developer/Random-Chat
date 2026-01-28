@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Chat;
 
 use App\Enums\ChatMatchState;
 use App\Events\Chat\ChatMessageSent;
+use App\Events\Chat\ChatPartnerLeft;
 use App\Events\Chat\MatchQueue;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\MatchRequest;
@@ -49,10 +50,29 @@ class MatchController extends Controller
     {
         $user_key = $request->validated('user_key');
 
-        // $this->match_service->leaveRoom($user_key, $roomKey);
+        $room = Cache::get('chat:room:'.$room_key);
+        $members = is_array($room) ? ($room['members'] ?? null) : null;
+
+        if (! is_array($members) || ! in_array($user_key, $members, true)) {
+            Cache::forget('chat:user-room:'.$user_key);
+            Cache::forever('chat:state:'.$user_key, ChatMatchState::Idle->value);
+
+            return response()->json([
+                'state' => ChatMatchState::Idle->value,
+            ]);
+        }
+
+        foreach ($members as $member) {
+            Cache::forget('chat:user-room:'.$member);
+            Cache::forever('chat:state:'.$member, ChatMatchState::Idle->value);
+            event(new MatchQueue($member, ChatMatchState::Idle));
+        }
+
+        Cache::forget('chat:room:'.$room_key);
+        event(new ChatPartnerLeft($room_key, $user_key));
 
         return response()->json([
-            'message' => 'Left the room successfully.',
+            'state' => ChatMatchState::Idle->value,
         ]);
     }
 

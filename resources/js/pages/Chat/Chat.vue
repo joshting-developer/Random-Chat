@@ -18,8 +18,13 @@ type ChatMessagePayload = {
     sentAt: string;
 };
 
+type ChatPartnerLeftPayload = {
+    roomKey: string;
+    userKey: string;
+};
+
 type EchoChannel = {
-    listen: (event: string, callback: (payload: ChatMessagePayload) => void) => EchoChannel;
+    listen: (event: string, callback: (payload: unknown) => void) => EchoChannel;
 };
 
 type EchoInstance = {
@@ -29,6 +34,7 @@ type EchoInstance = {
 
 const { userKey } = useChatIdentity();
 const isLeaving = ref(false);
+const showPartnerLeft = ref(false);
 const props = defineProps<{
     roomKey?: string | null;
 }>();
@@ -71,12 +77,16 @@ onMounted(() => {
         return;
     }
 
-    echo.private(`chat-${roomKey.value}`).listen('.chat.message', (payload) => {
-        if (!payload || payload.roomKey !== roomKey.value) {
+    const channel = echo.private(`chat-${roomKey.value}`);
+
+    channel.listen('.chat.message', (payload) => {
+        const messagePayload = payload as ChatMessagePayload | null;
+
+        if (!messagePayload || messagePayload.roomKey !== roomKey.value) {
             return;
         }
 
-        const sentAt = payload.sentAt ? new Date(payload.sentAt) : null;
+        const sentAt = messagePayload.sentAt ? new Date(messagePayload.sentAt) : null;
         const time = sentAt
             ? sentAt.toLocaleTimeString('zh-TW', {
                 hour: '2-digit',
@@ -88,11 +98,25 @@ onMounted(() => {
             ...messages.value,
             {
                 id: Date.now(),
-                sender: payload.userKey === userKey.value ? '你' : '對方',
-                content: payload.message,
+                sender: messagePayload.userKey === userKey.value ? '你' : '對方',
+                content: messagePayload.message,
                 time,
             },
         ];
+    });
+
+    channel.listen('.chat.partner.left', (payload) => {
+        const partnerPayload = payload as ChatPartnerLeftPayload | null;
+
+        if (!partnerPayload || partnerPayload.roomKey !== roomKey.value) {
+            return;
+        }
+
+        if (isLeaving.value) {
+            return;
+        }
+
+        showPartnerLeft.value = true;
     });
 });
 
@@ -141,7 +165,6 @@ const leaveRoom = async () => {
     }
 
     if (!roomKey.value || !userKey.value) {
-        console.log(roomKey.value, userKey.value);
         router.visit('/');
         return;
     }
@@ -170,6 +193,11 @@ const leaveRoom = async () => {
         isLeaving.value = false;
     }
 };
+
+const confirmPartnerLeft = () => {
+    showPartnerLeft.value = false;
+    leaveRoom();
+};
 </script>
 
 <template>
@@ -190,6 +218,21 @@ const leaveRoom = async () => {
                 <span class="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-600"
                     aria-hidden="true" />
                 <span>正在離開聊天室...</span>
+            </div>
+        </div>
+        <div v-if="showPartnerLeft"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 backdrop-blur-sm">
+            <div
+                class="w-full max-w-sm rounded-3xl border border-white/40 bg-white/95 p-6 text-center shadow-[0_30px_90px_-60px_rgba(15,23,42,0.6)]">
+                <p class="text-sm font-semibold text-slate-800">
+                    對方已離開聊天室
+                </p>
+                <p class="mt-2 text-xs text-slate-500">
+                    房間將在確認後離開。
+                </p>
+                <Button class="mt-4 h-10 w-full text-sm" @click="confirmPartnerLeft">
+                    確認
+                </Button>
             </div>
         </div>
         <div class="pointer-events-none absolute inset-0">

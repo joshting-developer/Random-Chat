@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Chat\BroadcastAuthController;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -11,11 +12,25 @@ Route::get('/', function () {
     return Inertia::render('Chat/Lobby');
 })->name('home');
 
-Route::get('/chat', function () {
-    return Inertia::render('Chat/Chat');
-})->name('chat');
-
 Route::get('/rooms/{roomKey}', function (string $roomKey) {
+    $session_user_key = (string) session('chat.user_key', '');
+    $room = Cache::get('chat:room:'.$roomKey);
+    $members = is_array($room) ? ($room['members'] ?? null) : null;
+
+    if (! $session_user_key || ! is_array($members)) {
+        return Inertia::render('Chat/RoomUnavailable', [
+            'reason' => 'missing',
+            'roomKey' => $roomKey,
+        ]);
+    }
+
+    if (! in_array($session_user_key, $members, true)) {
+        return Inertia::render('Chat/RoomUnavailable', [
+            'reason' => 'forbidden',
+            'roomKey' => $roomKey,
+        ]);
+    }
+
     return Inertia::render('Chat/Chat', [
         'roomKey' => $roomKey,
     ]);
