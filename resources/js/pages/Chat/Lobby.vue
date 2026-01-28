@@ -12,13 +12,21 @@ const matchState = ref<'idle' | 'queue'>('idle');
 const csrfToken =
     typeof document !== 'undefined'
         ? document
-              .querySelector('meta[name="csrf-token"]')
-              ?.getAttribute('content')
+            .querySelector('meta[name="csrf-token"]')
+            ?.getAttribute('content')
         : null;
 
 useChatSocket({
-    onMatchQueued: () => {
-        matchState.value = 'queue';
+    onMatchState: (payload) => {
+        if (payload && typeof payload === 'object' && 'state' in payload) {
+            if (payload.state === 'queue') {
+                matchState.value = 'queue';
+            }
+
+            if (payload.state === 'idle') {
+                matchState.value = 'idle';
+            }
+        }
     },
     onMatchFound: (payload) => {
         if (payload && typeof payload === 'object' && 'roomKey' in payload) {

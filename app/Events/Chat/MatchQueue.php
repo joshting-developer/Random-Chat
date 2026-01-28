@@ -8,17 +8,17 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 
-class MatchQueued implements ShouldBroadcastNow
+class MatchQueue implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     /**
-     * 建立已加入配對事件
+     * 建立配對狀態事件
      */
     public function __construct(
         public string $user_key,
+        public ChatMatchState $state = ChatMatchState::Queue,
     ) {}
 
     /**
@@ -38,7 +38,7 @@ class MatchQueued implements ShouldBroadcastNow
      */
     public function broadcastAs(): string
     {
-        return 'chat.match.queued';
+        return 'chat.match.state';
     }
 
     /**
@@ -48,10 +48,8 @@ class MatchQueued implements ShouldBroadcastNow
      */
     public function broadcastWith(): array
     {
-        Log::channel('single')->info('MatchQueued broadcastWith', ['user_key' => $this->user_key]);
-
         return [
-            'state' => ChatMatchState::Queue->value,
+            'state' => $this->state->value,
         ];
     }
 }

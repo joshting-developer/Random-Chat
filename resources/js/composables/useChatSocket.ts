@@ -13,7 +13,7 @@ type EchoInstance = {
 };
 
 export type ChatSocketHandlers = {
-    onMatchQueued?: (payload: unknown) => void;
+    onMatchState?: (payload: unknown) => void;
     onMatchFound?: (payload: unknown) => void;
     onPartnerLeft?: (payload: unknown) => void;
 };
@@ -50,11 +50,8 @@ export function useChatSocket(handlers: ChatSocketHandlers = {}): UseChatSocketR
 
         const channel = echo.private(channelName.value);
 
-        console.log(channel);
-        console.log(123);
-
-        if (handlers.onMatchQueued) {
-            channel.listen('.chat.match.queued', handlers.onMatchQueued);
+        if (handlers.onMatchState) {
+            channel.listen('.chat.match.state', handlers.onMatchState);
         }
 
         if (handlers.onMatchFound) {
@@ -71,14 +68,18 @@ export function useChatSocket(handlers: ChatSocketHandlers = {}): UseChatSocketR
     watch(
         () => channelName.value,
         (value) => {
-            if (value) connect();
+            if (value) {
+                connect();
+            }
         },
-        { immediate: true }
+        { immediate: true },
     );
 
     onBeforeUnmount(() => {
         const echo = getEcho();
-        if (echo && channelName.value) echo.leave(channelName.value);
+        if (echo && channelName.value) {
+            echo.leave(channelName.value);
+        }
     });
 
     return {

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Chat;
 
 use App\Enums\ChatMatchState;
-use App\Events\Chat\MatchQueued;
+use App\Events\Chat\MatchQueue;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\MatchRequest;
 use App\Services\Chat\MatchService;
@@ -21,12 +21,23 @@ class MatchController extends Controller
         $user_key = $request->validated('user_key');
 
         $this->match_service->start($user_key);
-        event(new MatchQueued($user_key));
+        event(new MatchQueue($user_key, ChatMatchState::Queue));
 
         return response()->json([
             'state' => ChatMatchState::Queue->value,
         ]);
     }
 
-    public function cancel() {}
+    public function cancel(MatchRequest $request): JsonResponse
+    {
+        $user_key = $request->validated('user_key');
+
+        $this->match_service->cancel($user_key);
+        event(new MatchQueue($user_key, ChatMatchState::Idle));
+
+        return response()->json([
+            'state' => ChatMatchState::Idle->value,
+        ]);
+
+    }
 }

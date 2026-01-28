@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Chat;
 
-use App\Events\Chat\MatchQueued;
+use App\Events\Chat\MatchQueue;
 use App\Services\Chat\MatchService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Event;
@@ -13,7 +13,7 @@ class MatchQueuedEventTest extends TestCase
 {
     public function test_match_queued_event_is_dispatched(): void
     {
-        Event::fake([MatchQueued::class]);
+        Event::fake([MatchQueue::class]);
 
         $this->app->instance(MatchService::class, new class extends MatchService
         {
@@ -29,7 +29,7 @@ class MatchQueuedEventTest extends TestCase
 
         $response->assertOk();
 
-        Event::assertDispatched(MatchQueued::class, function (MatchQueued $event) use ($userKey): bool {
+        Event::assertDispatched(MatchQueue::class, function (MatchQueue $event) use ($userKey): bool {
             return $event->user_key === $userKey;
         });
     }
