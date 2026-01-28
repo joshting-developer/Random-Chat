@@ -10,13 +10,16 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Chat\MatchRequest;
 use App\Http\Requests\Chat\SendMessageRequest;
 use App\Jobs\Chat\ProcessMatchJob;
+use App\Services\Chat\ChatRoomService;
 use App\Services\Chat\MatchService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 
 class MatchController extends Controller
 {
-    public function __construct(private readonly MatchService $match_service) {}
+    public function __construct(
+        private readonly MatchService $match_service,
+        private readonly ChatRoomService $chat_room_service,
+    ) {}
 
     /**
      * 加入配對佇列
@@ -26,6 +29,7 @@ class MatchController extends Controller
         $user_key = $request->validated('user_key');
 
         $this->match_service->start($user_key);
+        $this->chat_room_service->setUserState($user_key, ChatMatchState::Queue);
         event(new MatchQueue($user_key, ChatMatchState::Queue));
         ProcessMatchJob::dispatch($user_key);
 
@@ -39,6 +43,7 @@ class MatchController extends Controller
         $user_key = $request->validated('user_key');
 
         $this->match_service->cancel($user_key);
+        $this->chat_room_service->setUserState($user_key, ChatMatchState::Idle);
         event(new MatchQueue($user_key, ChatMatchState::Idle));
 
         return response()->json([
@@ -50,12 +55,11 @@ class MatchController extends Controller
     {
         $user_key = $request->validated('user_key');
 
-        $room = Cache::get('chat:room:'.$room_key);
-        $members = is_array($room) ? ($room['members'] ?? null) : null;
+        $members = $this->chat_room_service->getRoomMembers($room_key);
 
         if (! is_array($members) || ! in_array($user_key, $members, true)) {
-            Cache::forget('chat:user-room:'.$user_key);
-            Cache::forever('chat:state:'.$user_key, ChatMatchState::Idle->value);
+            $this->chat_room_service->clearUserRoom($user_key);
+            $this->chat_room_service->setUserState($user_key, ChatMatchState::Idle);
 
             return response()->json([
                 'state' => ChatMatchState::Idle->value,
@@ -63,12 +67,12 @@ class MatchController extends Controller
         }
 
         foreach ($members as $member) {
-            Cache::forget('chat:user-room:'.$member);
-            Cache::forever('chat:state:'.$member, ChatMatchState::Idle->value);
+            $this->chat_room_service->clearUserRoom($member);
+            $this->chat_room_service->setUserState($member, ChatMatchState::Idle);
             event(new MatchQueue($member, ChatMatchState::Idle));
         }
 
-        Cache::forget('chat:room:'.$room_key);
+        $this->chat_room_service->clearRoom($room_key);
         event(new ChatPartnerLeft($room_key, $user_key));
 
         return response()->json([
@@ -80,8 +84,7 @@ class MatchController extends Controller
     {
         $user_key = $request->validated('user_key');
         $message = $request->validated('message');
-        $room = Cache::get('chat:room:'.$room_key);
-        $members = is_array($room) ? ($room['members'] ?? null) : null;
+        $members = $this->chat_room_service->getRoomMembers($room_key);
 
         if (! is_array($members) || ! in_array($user_key, $members, true)) {
             return response()->json([

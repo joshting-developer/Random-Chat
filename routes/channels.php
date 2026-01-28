@@ -1,7 +1,7 @@
 <?php
 
+use App\Services\Chat\ChatRoomService;
 use Illuminate\Support\Facades\Broadcast;
-use Illuminate\Support\Facades\Cache;
 
 Broadcast::private('user.{user_key}', function ($user, string $user_key) {
     return session('chat.user_key') === $user_key;
@@ -14,12 +14,7 @@ Broadcast::private('chat-{room_key}', function ($user, string $room_key) {
         return false;
     }
 
-    $room = Cache::get('chat:room:'.$room_key);
-    $members = is_array($room) ? ($room['members'] ?? null) : null;
+    $members = app(ChatRoomService::class)->getRoomMembers($room_key);
 
-    if (! is_array($members)) {
-        return false;
-    }
-
-    return in_array($session_user_key, $members, true);
+    return is_array($members) && in_array($session_user_key, $members, true);
 });

@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Chat;
 
+use App\Services\Chat\ChatRoomService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -12,6 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class BroadcastAuthController extends Controller
 {
+    public function __construct(private readonly ChatRoomService $chat_room_service) {}
+
     /**
      * 驗證使用者是否可訂閱私人頻道
      */
@@ -53,13 +55,8 @@ class BroadcastAuthController extends Controller
             return false;
         }
 
-        $room = Cache::get('chat:room:'.$room_key);
-        $members = is_array($room) ? ($room['members'] ?? null) : null;
+        $members = $this->chat_room_service->getRoomMembers($room_key);
 
-        if (! is_array($members)) {
-            return false;
-        }
-
-        return in_array($session_user_key, $members, true);
+        return is_array($members) && in_array($session_user_key, $members, true);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Jobs\Chat;
 use App\Enums\ChatMatchState;
 use App\Events\Chat\MatchFound;
 use App\Events\Chat\MatchQueue;
+use App\Services\Chat\ChatRoomService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -24,10 +25,6 @@ class ProcessMatchJob implements ShouldQueue
 
     private const LOCK_KEY = 'chat:match:lock';
 
-    private const ROOM_PREFIX = 'chat:room:';
-
-    private const ROOM_USER_PREFIX = 'chat:user-room:';
-
     /**
      * 建立配對處理工作
      */
@@ -38,7 +35,7 @@ class ProcessMatchJob implements ShouldQueue
     /**
      * 執行配對流程
      */
-    public function handle(): void
+    public function handle(ChatRoomService $chat_room_service): void
     {
         $lock = Cache::lock(self::LOCK_KEY, 3);
 
@@ -62,13 +59,9 @@ class ProcessMatchJob implements ShouldQueue
             $room_key = (string) Str::uuid();
             $members = [$this->user_key, $partner_key];
 
-            Cache::forever(self::ROOM_PREFIX.$room_key, [
-                'roomKey' => $room_key,
-                'members' => $members,
-            ]);
-
-            Cache::forever(self::ROOM_USER_PREFIX.$this->user_key, $room_key);
-            Cache::forever(self::ROOM_USER_PREFIX.$partner_key, $room_key);
+            $chat_room_service->storeRoom($room_key, $members);
+            $chat_room_service->setUserRoom($this->user_key, $room_key);
+            $chat_room_service->setUserRoom($partner_key, $room_key);
 
             Redis::lrem(self::QUEUE_KEY, 0, $this->user_key);
             Redis::lrem(self::QUEUE_KEY, 0, $partner_key);

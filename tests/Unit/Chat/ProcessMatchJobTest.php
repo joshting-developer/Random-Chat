@@ -4,6 +4,7 @@ namespace Tests\Unit\Chat;
 
 use App\Events\Chat\MatchFound;
 use App\Jobs\Chat\ProcessMatchJob;
+use App\Services\Chat\ChatRoomService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Redis;
@@ -36,7 +37,7 @@ class ProcessMatchJobTest extends TestCase
             ->andReturn(1);
 
         $job = new ProcessMatchJob($user_key);
-        $job->handle();
+        $job->handle(app(ChatRoomService::class));
 
         $room_key = Cache::get('chat:user-room:'.$user_key);
 
@@ -76,7 +77,7 @@ class ProcessMatchJobTest extends TestCase
         Redis::shouldReceive('lrem')->never();
 
         $job = new ProcessMatchJob($user_key);
-        $job->handle();
+        $job->handle(app(ChatRoomService::class));
 
         $this->assertNull(Cache::get('chat:user-room:'.$user_key));
         $this->assertNull(Cache::get('chat:user-room:'.$partner_key));

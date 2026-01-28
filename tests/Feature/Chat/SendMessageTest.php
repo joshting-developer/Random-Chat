@@ -23,7 +23,7 @@ class SendMessageTest extends TestCase
             'members' => [$userKey],
         ]);
 
-        $response = $this->postJson(route('chat.rooms.messages', ['roomKey' => $roomKey]), [
+        $response = $this->postJson(route('chat.rooms.messages', ['room_key' => $roomKey]), [
             'user_key' => $userKey,
             'message' => 'Hello there!',
         ]);
@@ -55,7 +55,7 @@ class SendMessageTest extends TestCase
             'members' => ['someone-else'],
         ]);
 
-        $response = $this->postJson(route('chat.rooms.messages', ['roomKey' => $roomKey]), [
+        $response = $this->postJson(route('chat.rooms.messages', ['room_key' => $roomKey]), [
             'user_key' => $userKey,
             'message' => 'Hello there!',
         ]);

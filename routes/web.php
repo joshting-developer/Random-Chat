@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\Chat\BroadcastAuthController;
+use App\Services\Chat\ChatRoomService;
 use Illuminate\Support\Facades\Broadcast;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -12,10 +12,9 @@ Route::get('/', function () {
     return Inertia::render('Chat/Lobby');
 })->name('home');
 
-Route::get('/rooms/{roomKey}', function (string $roomKey) {
+Route::get('/rooms/{roomKey}', function (string $roomKey, ChatRoomService $chat_room_service) {
     $session_user_key = (string) session('chat.user_key', '');
-    $room = Cache::get('chat:room:'.$roomKey);
-    $members = is_array($room) ? ($room['members'] ?? null) : null;
+    $members = $chat_room_service->getRoomMembers($roomKey);
 
     if (! $session_user_key || ! is_array($members)) {
         return Inertia::render('Chat/RoomUnavailable', [
