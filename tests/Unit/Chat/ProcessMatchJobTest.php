@@ -44,4 +44,25 @@ class ProcessMatchJobTest extends TestCase
             Cache::get('chat:room:'.$room_key)['members'] ?? [],
         );
     }
+
+    public function test_it_skips_matching_when_user_is_not_in_queue(): void
+    {
+        Cache::flush();
+
+        $user_key = (string) Str::uuid();
+        $partner_key = (string) Str::uuid();
+
+        Redis::shouldReceive('lrange')
+            ->once()
+            ->with('chat:match:queue', 0, -1)
+            ->andReturn([$partner_key]);
+
+        Redis::shouldReceive('lrem')->never();
+
+        $job = new ProcessMatchJob($user_key);
+        $job->handle();
+
+        $this->assertNull(Cache::get('chat:user-room:'.$user_key));
+        $this->assertNull(Cache::get('chat:user-room:'.$partner_key));
+    }
 }

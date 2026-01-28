@@ -45,22 +45,30 @@ class ProcessMatchJob implements ShouldQueue
             $lock->block(2);
 
             $queue = Redis::lrange(self::QUEUE_KEY, 0, -1);
+
+            if (! in_array($this->user_key, $queue, true)) {
+                Log::info("User {$this->user_key} is not in queue, skipping match.");
+
+                return;
+            }
+
             $partner_key = $this->findPartner($queue, $this->user_key);
 
             if (! $partner_key) {
                 Log::info("No partner found for user {$this->user_key}");
+
                 return;
             }
 
             $room_key = (string) Str::uuid();
 
-            Cache::forever(self::ROOM_PREFIX . $room_key, [
+            Cache::forever(self::ROOM_PREFIX.$room_key, [
                 'roomKey' => $room_key,
                 'members' => [$this->user_key, $partner_key],
             ]);
 
-            Cache::forever(self::ROOM_USER_PREFIX . $this->user_key, $room_key);
-            Cache::forever(self::ROOM_USER_PREFIX . $partner_key, $room_key);
+            Cache::forever(self::ROOM_USER_PREFIX.$this->user_key, $room_key);
+            Cache::forever(self::ROOM_USER_PREFIX.$partner_key, $room_key);
 
             Redis::lrem(self::QUEUE_KEY, 0, $this->user_key);
             Redis::lrem(self::QUEUE_KEY, 0, $partner_key);
