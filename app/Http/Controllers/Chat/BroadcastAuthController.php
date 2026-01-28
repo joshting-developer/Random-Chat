@@ -16,6 +16,10 @@ class BroadcastAuthController extends Controller
 
     /**
      * 驗證使用者是否可訂閱私人頻道
+     *
+     * @param Request $request
+     *
+     * @return Response
      */
     public function auth(Request $request): Response
     {
@@ -23,7 +27,7 @@ class BroadcastAuthController extends Controller
         $channel_name = (string) $request->input('channel_name'); // 例如 private-user.{uuid}
 
         $session_user_key = (string) session('chat.user_key', '');
-        $private_user_channel = 'private-user.'.$session_user_key;
+        $private_user_channel = 'private-user.' . $session_user_key;
         $is_user_channel = $channel_name === $private_user_channel;
         $is_room_channel = $this->isAuthorizedRoomChannel($channel_name, $session_user_key);
 
@@ -35,14 +39,22 @@ class BroadcastAuthController extends Controller
         $key = config('broadcasting.connections.pusher.key');
         $secret = config('broadcasting.connections.pusher.secret');
 
-        $string_to_sign = $socket_id.':'.$channel_name;
+        $string_to_sign = $socket_id . ':' . $channel_name;
         $signature = hash_hmac('sha256', $string_to_sign, $secret);
 
         return response()->json([
-            'auth' => $key.':'.$signature,
+            'auth' => $key . ':' . $signature,
         ]);
     }
 
+    /**
+     * 檢查使用者是否有權限訂閱指定的聊天室頻道
+     *
+     * @param string $channel_name
+     * @param string $session_user_key
+     *
+     * @return bool
+     */
     private function isAuthorizedRoomChannel(string $channel_name, string $session_user_key): bool
     {
         if (! str_starts_with($channel_name, 'private-chat-')) {

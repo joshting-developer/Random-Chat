@@ -29,6 +29,10 @@ class MatchController extends Controller
 
     /**
      * 加入配對佇列
+     *
+     * @param MatchRequest $request
+     *
+     * @return JsonResponse
      */
     public function start(MatchRequest $request): JsonResponse
     {
@@ -44,6 +48,13 @@ class MatchController extends Controller
         ]);
     }
 
+    /**
+     * 取消配對
+     *
+     * @param MatchRequest $request
+     *
+     * @return JsonResponse
+     */
     public function cancel(MatchRequest $request): JsonResponse
     {
         $user_key = $request->validated('user_key');
@@ -57,6 +68,13 @@ class MatchController extends Controller
         ]);
     }
 
+    /**
+     * 心跳檢查
+     *
+     * @param HeartbeatRequest $request
+     *
+     * @return JsonResponse
+     */
     public function heartbeat(HeartbeatRequest $request): JsonResponse
     {
         $room_key = $request->validated('room_key');
@@ -101,15 +119,21 @@ class MatchController extends Controller
         ]);
     }
 
+    /**
+     * 加入聊天室
+     *
+     * @param string $room_key
+     * @param JoinRoomRequest $request
+     *
+     * @return JsonResponse
+     */
     public function join(string $room_key, JoinRoomRequest $request): JsonResponse
     {
         $user_key = $request->validated('user_key');
         $members = $this->chat_room_service->getRoomMembers($room_key);
 
         if (! is_array($members) || ! in_array($user_key, $members, true)) {
-            return response()->json([
-                'message' => 'Room not found.',
-            ], 404);
+            event(new ChatPartnerLeft($room_key, $user_key));
         }
 
         $this->chat_room_service->setUserState($user_key, ChatMatchState::Room);
@@ -131,6 +155,14 @@ class MatchController extends Controller
         ]);
     }
 
+    /**
+     * 離開聊天室
+     *
+     * @param string $room_key
+     * @param LeaveRoomRequest $request
+     * 
+     * @return JsonResponse
+     */
     public function leave(string $room_key, LeaveRoomRequest $request): JsonResponse
     {
         $user_key = $request->validated('user_key');
@@ -160,6 +192,15 @@ class MatchController extends Controller
         ]);
     }
 
+
+    /**
+     * 傳送訊息
+     *
+     * @param string $room_key
+     * @param SendMessageRequest $request
+     *
+     * @return JsonResponse
+     */
     public function sendMessage(string $room_key, SendMessageRequest $request): JsonResponse
     {
         $user_key = $request->validated('user_key');
