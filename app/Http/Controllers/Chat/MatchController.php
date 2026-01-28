@@ -134,6 +134,7 @@ class MatchController extends Controller
 
         if (! is_array($members) || ! in_array($user_key, $members, true)) {
             event(new ChatPartnerLeft($room_key, $user_key));
+            abort(404);
         }
 
         $this->chat_room_service->setUserState($user_key, ChatMatchState::Room);
