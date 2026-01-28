@@ -23,6 +23,20 @@ class JoinRoomRequest extends FormRequest
     {
         return [
             'room_key' => ['required', 'uuid'],
+            'user_key' => ['required', 'uuid'],
+        ];
+    }
+
+    /**
+     * 取得驗證錯誤訊息
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'room_key.required' => '請提供房間識別碼。',
+            'user_key.required' => '請提供使用者識別碼。',
         ];
     }
 

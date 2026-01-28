@@ -11,11 +11,24 @@ type ChatMessage = {
     time: string;
 };
 
+type ChatHistoryRecord = {
+    id: number;
+    userKey: string;
+    message: string;
+    sentAt: string | null;
+};
+
 type ChatMessagePayload = {
     roomKey: string;
     userKey: string;
     message: string;
     sentAt: string;
+};
+
+type JoinRoomResponse = {
+    state: string;
+    roomKey: string;
+    history: ChatHistoryRecord[];
 };
 
 type ChatPartnerLeftPayload = {
@@ -39,14 +52,7 @@ const props = defineProps<{
     roomKey?: string | null;
 }>();
 
-const messages = ref<ChatMessage[]>([
-    {
-        id: 1,
-        sender: '系統',
-        content: '歡迎進入隨機聊天室，現在你可以開始聊天了！',
-        time: '剛剛',
-    },
-]);
+const messages = ref<ChatMessage[]>([]);
 
 const input = ref('');
 const displayUserKey = computed(() => userKey.value || '載入中...');
@@ -66,10 +72,65 @@ const getEcho = (): EchoInstance | null => {
     return (window as { Echo?: EchoInstance }).Echo ?? null;
 };
 
-onMounted(() => {
-    if (!roomKey.value) {
+const formatMessageTime = (sentAt?: string | null) => {
+    if (!sentAt) {
+        return '剛剛';
+    }
+
+    const parsed = new Date(sentAt);
+
+    if (Number.isNaN(parsed.getTime())) {
+        return '剛剛';
+    }
+
+    return parsed.toLocaleTimeString('zh-TW', {
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
+
+onMounted(async () => {
+    if (!roomKey.value || !userKey.value) {
         return;
     }
+
+    const response = await fetch(`/api/chat/rooms/${roomKey.value}/join`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+            user_key: userKey.value,
+        }),
+    });
+
+    if (!response.ok) {
+        router.visit('/');
+        return;
+    }
+
+    const payload = (await response.json()) as JoinRoomResponse;
+    const history = Array.isArray(payload.history)
+        ? payload.history.map((record) => ({
+            id: record.id,
+            sender: record.userKey === userKey.value ? '你' : '對方',
+            content: record.message,
+            time: formatMessageTime(record.sentAt),
+        }))
+        : [];
+
+    messages.value = [
+        {
+            id: 0,
+            sender: '系統',
+            content: '歡迎進入隨機聊天室，現在你可以開始聊天了！',
+            time: '剛剛',
+        },
+        ...history,
+    ];
 
     const echo = getEcho();
 
@@ -86,21 +147,13 @@ onMounted(() => {
             return;
         }
 
-        const sentAt = messagePayload.sentAt ? new Date(messagePayload.sentAt) : null;
-        const time = sentAt
-            ? sentAt.toLocaleTimeString('zh-TW', {
-                hour: '2-digit',
-                minute: '2-digit',
-            })
-            : '剛剛';
-
         messages.value = [
             ...messages.value,
             {
                 id: Date.now(),
                 sender: messagePayload.userKey === userKey.value ? '你' : '對方',
                 content: messagePayload.message,
-                time,
+                time: formatMessageTime(messagePayload.sentAt),
             },
         ];
     });

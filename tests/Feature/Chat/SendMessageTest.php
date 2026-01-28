@@ -3,6 +3,7 @@
 namespace Tests\Feature\Chat;
 
 use App\Events\Chat\ChatMessageSent;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
@@ -10,6 +11,8 @@ use Tests\TestCase;
 
 class SendMessageTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_it_broadcasts_message_for_room_members(): void
     {
         Cache::flush();
@@ -23,7 +26,7 @@ class SendMessageTest extends TestCase
             'members' => [$userKey],
         ]);
 
-        $response = $this->postJson(route('chat.rooms.messages', ['room_key' => $roomKey]), [
+        $response = $this->postJson(route('chat.rooms.messages', ['roomKey' => $roomKey]), [
             'user_key' => $userKey,
             'message' => 'Hello there!',
         ]);
@@ -32,6 +35,12 @@ class SendMessageTest extends TestCase
             ->assertJson([
                 'status' => 'sent',
             ]);
+
+        $this->assertDatabaseHas('chat_histories', [
+            'room_key' => $roomKey,
+            'user_key' => $userKey,
+            'message' => 'Hello there!',
+        ]);
 
         Event::assertDispatched(
             ChatMessageSent::class,
@@ -55,12 +64,13 @@ class SendMessageTest extends TestCase
             'members' => ['someone-else'],
         ]);
 
-        $response = $this->postJson(route('chat.rooms.messages', ['room_key' => $roomKey]), [
+        $response = $this->postJson(route('chat.rooms.messages', ['roomKey' => $roomKey]), [
             'user_key' => $userKey,
             'message' => 'Hello there!',
         ]);
 
         $response->assertNotFound();
         Event::assertNotDispatched(ChatMessageSent::class);
+        $this->assertDatabaseCount('chat_histories', 0);
     }
 }

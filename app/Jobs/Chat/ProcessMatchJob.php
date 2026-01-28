@@ -62,6 +62,8 @@ class ProcessMatchJob implements ShouldQueue
             $chat_room_service->storeRoom($room_key, $members);
             $chat_room_service->setUserRoom($this->user_key, $room_key);
             $chat_room_service->setUserRoom($partner_key, $room_key);
+            $chat_room_service->setUserState($this->user_key, ChatMatchState::Room);
+            $chat_room_service->setUserState($partner_key, ChatMatchState::Room);
 
             Redis::lrem(self::QUEUE_KEY, 0, $this->user_key);
             Redis::lrem(self::QUEUE_KEY, 0, $partner_key);

@@ -2,13 +2,17 @@
 
 namespace Tests\Feature\Chat;
 
+use App\Models\ChatHistory;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class MatchControllerTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -108,16 +112,21 @@ class MatchControllerTest extends TestCase
 
         $this->withoutMiddleware(VerifyCsrfToken::class)
             ->withSession(['chat.user_key' => 'not-member'])
-            ->postJson(route('chat.rooms.join', ['roomKey' => $roomKey]))
+            ->postJson(route('chat.rooms.join', ['roomKey' => $roomKey]), [
+                'user_key' => 'not-member',
+            ])
             ->assertNotFound();
 
         $this->withoutMiddleware(VerifyCsrfToken::class)
             ->withSession(['chat.user_key' => $userAKey])
-            ->postJson(route('chat.rooms.join', ['roomKey' => $roomKey]))
+            ->postJson(route('chat.rooms.join', ['roomKey' => $roomKey]), [
+                'user_key' => $userAKey,
+            ])
             ->assertOk()
             ->assertJson([
                 'state' => 'room',
                 'roomKey' => $roomKey,
+                'history' => [],
             ]);
     }
 
@@ -143,7 +152,9 @@ class MatchControllerTest extends TestCase
 
         $this->withoutMiddleware(VerifyCsrfToken::class)
             ->withSession(['chat.user_key' => $userAKey])
-            ->postJson(route('chat.rooms.leave', ['roomKey' => $roomKey]))
+            ->postJson(route('chat.rooms.leave', ['roomKey' => $roomKey]), [
+                'user_key' => $userAKey,
+            ])
             ->assertOk()
             ->assertJson([
                 'state' => 'idle',
@@ -153,5 +164,44 @@ class MatchControllerTest extends TestCase
         $this->assertSame('idle', Cache::get('chat:state:'.$userBKey));
         $this->assertNull(Cache::get('chat:user-room:'.$userAKey));
         $this->assertNull(Cache::get('chat:user-room:'.$userBKey));
+    }
+
+    public function test_join_room_returns_history(): void
+    {
+        $roomKey = (string) Str::uuid();
+        $userKey = (string) Str::uuid();
+
+        Cache::forever('chat:room:'.$roomKey, [
+            'roomKey' => $roomKey,
+            'members' => [$userKey],
+        ]);
+
+        $first = ChatHistory::factory()->create([
+            'room_key' => $roomKey,
+            'user_key' => $userKey,
+            'message' => 'First message',
+            'sent_at' => now()->subMinute(),
+        ]);
+
+        $second = ChatHistory::factory()->create([
+            'room_key' => $roomKey,
+            'user_key' => $userKey,
+            'message' => 'Second message',
+            'sent_at' => now(),
+        ]);
+
+        $response = $this->withoutMiddleware(VerifyCsrfToken::class)
+            ->withSession(['chat.user_key' => $userKey])
+            ->postJson(route('chat.rooms.join', ['roomKey' => $roomKey]), [
+                'user_key' => $userKey,
+            ]);
+
+        $response->assertOk();
+        $history = $response->json('history');
+
+        $this->assertIsArray($history);
+        $this->assertCount(2, $history);
+        $this->assertSame($first->id, $history[0]['id']);
+        $this->assertSame($second->id, $history[1]['id']);
     }
 }
