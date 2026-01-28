@@ -28,7 +28,8 @@ services:
     working_dir: /var/www/html
     volumes:
       - ./:/var/www/html
-    command: sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+    #command: tail -f /dev/null
+    command: sh -lc "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
     restart: unless-stopped
 
   mysql:

@@ -19,5 +19,15 @@ class DatabaseSeeder extends Seeder
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+
+        User::query()->updateOrCreate(
+            [
+                'name' => 'admin',
+            ],
+            [
+                'email' => 'admin@gmail.com',
+                'password' => bcrypt('password'),
+            ]
+        );
     }
 }
