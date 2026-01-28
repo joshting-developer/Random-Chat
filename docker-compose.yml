@@ -1,0 +1,68 @@
+services:
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./volumes/logs/nginx:/var/log/nginx
+      - ./dockerfiles/nginx/conf.d:/etc/nginx/conf.d
+      - ./dockerfiles/nginx/snippets:/etc/nginx/snippets
+      - ./:/var/www/html
+    depends_on:
+      - web
+    networks:
+      - proxy-network
+      - default
+    restart: always
+
+  web:
+    image: joshting1999/nginx-fpm:v1.2
+    volumes:
+      - ./:/var/www/html
+      - ./volumes/logs/php:/var/log/php  # ← 掛載 PHP-FPM log 目錄
+    depends_on:
+      - mysql
+      - redis
+    restart: always
+
+  node:
+    image: joshting1999/node-php-dev:v0.1.1
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    command: sh -lc "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - ./volumes/data/mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Taipei
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin:5-apache
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 0
+      UPLOAD_LIMIT: 64M
+      TZ: Asia/Taipei
+    restart: unless-stopped    
+
+  redis:
+    image: redis:latest
+    volumes:
+      - ./volumes/data/redis:/data
+    restart: always
+
+networks:
+  proxy-network:
+    external: true
+    driver: bridge
