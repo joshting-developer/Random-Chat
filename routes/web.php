@@ -11,11 +11,17 @@ Route::get('/', function () {
     return Inertia::render('Chat/Lobby');
 })->name('home');
 
-Route::get('/rooms/{room}', function () {
+Route::get('/chat', function () {
     return Inertia::render('Chat/Chat');
 })->name('chat');
 
+Route::get('/rooms/{roomKey}', function (string $roomKey) {
+    return Inertia::render('Chat/Chat', [
+        'roomKey' => $roomKey,
+    ]);
+})->whereUuid('roomKey')->name('chat.room');
+
 Route::post('/chat/broadcasting/auth', [BroadcastAuthController::class, 'auth']);
 
-require __DIR__ . '/settings.php';
-require __DIR__ . '/channels.php';
+require __DIR__.'/settings.php';
+require __DIR__.'/channels.php';
