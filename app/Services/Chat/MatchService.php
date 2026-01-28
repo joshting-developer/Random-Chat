@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Redis;
 class MatchService
 {
     // Redis keys
-    private const QUEUE_KEY = 'chat:match:queue';               // list
+    private const QUEUE_KEY = 'chat:match:queue';
 
     private const LOCK_KEY = 'chat:match:lock';
 
@@ -16,9 +16,6 @@ class MatchService
      * 開始配對：
      * - 若有人在 queue：配對並建立 room
      * - 否則：把自己放進 queue 等待
-     *
-     * 回傳：
-     * - ['status' => 'queued'] 或 ['status' => 'matched', 'roomKey' => '...']
      */
     public function start(string $user_key): void
     {
@@ -35,6 +32,13 @@ class MatchService
         }
     }
 
+    /**
+     * 取消配對：把自己從 queue 移除
+     *
+     * @param string $user_key
+     *
+     * @return void
+     */
     public function cancel(string $user_key): void
     {
         // 核心：對「出隊」這段加鎖，避免同時修改狀態
