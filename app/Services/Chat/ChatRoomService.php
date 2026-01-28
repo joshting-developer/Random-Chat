@@ -20,7 +20,7 @@ class ChatRoomService
      */
     public function getRoom(string $room_key): ?array
     {
-        $room = Cache::get(self::ROOM_PREFIX.$room_key);
+        $room = Cache::get(self::ROOM_PREFIX . $room_key);
 
         return is_array($room) ? $room : null;
     }
@@ -50,7 +50,7 @@ class ChatRoomService
      */
     public function storeRoom(string $room_key, array $members): void
     {
-        Cache::forever(self::ROOM_PREFIX.$room_key, [
+        Cache::forever(self::ROOM_PREFIX . $room_key, [
             'room_key' => $room_key,
             'members' => $members,
         ]);
@@ -61,7 +61,7 @@ class ChatRoomService
      */
     public function setUserRoom(string $user_key, string $room_key): void
     {
-        Cache::forever(self::ROOM_USER_PREFIX.$user_key, $room_key);
+        Cache::forever(self::ROOM_USER_PREFIX . $user_key, $room_key);
     }
 
     /**
@@ -69,7 +69,7 @@ class ChatRoomService
      */
     public function clearUserRoom(string $user_key): void
     {
-        Cache::forget(self::ROOM_USER_PREFIX.$user_key);
+        Cache::forget(self::ROOM_USER_PREFIX . $user_key);
     }
 
     /**
@@ -77,7 +77,7 @@ class ChatRoomService
      */
     public function clearRoom(string $room_key): void
     {
-        Cache::forget(self::ROOM_PREFIX.$room_key);
+        Cache::forget(self::ROOM_PREFIX . $room_key);
     }
 
     /**
@@ -85,6 +85,6 @@ class ChatRoomService
      */
     public function setUserState(string $user_key, ChatMatchState $state): void
     {
-        Cache::forever(self::STATE_PREFIX.$user_key, $state->value);
+        Cache::forever(self::STATE_PREFIX . $user_key, $state->value);
     }
 }

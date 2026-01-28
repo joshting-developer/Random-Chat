@@ -61,18 +61,17 @@ class MatchController extends Controller
     {
         $room_key = $request->validated('room_key');
         $user_key = $request->validated('user_key');
+
         $members = $this->chat_room_service->getRoomMembers($room_key);
 
         if (! is_array($members) || ! in_array($user_key, $members, true)) {
-            return response()->json([
-                'message' => 'Room not found.',
-            ], 404);
+            event(new ChatPartnerLeft($room_key, $user_key));
         }
 
         Cache::put("chat:presence:{$user_key}", $room_key, now()->addSeconds(25));
 
         $partner_key = collect($members)
-            ->first(fn (string $member) => $member !== $user_key);
+            ->first(fn(string $member) => $member !== $user_key);
 
         if (! $partner_key) {
             return response()->json([
@@ -118,7 +117,7 @@ class MatchController extends Controller
 
         $history = $this->chat_service
             ->getRoomHistory($room_key)
-            ->map(fn ($record) => [
+            ->map(fn($record) => [
                 'id' => $record->id,
                 'user_key' => $record->user_key,
                 'message' => $record->message,
