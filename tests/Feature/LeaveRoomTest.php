@@ -20,7 +20,7 @@ class LeaveRoomTest extends TestCase
         $partner_key = (string) Str::uuid();
 
         Cache::forever('chat:room:'.$room_key, [
-            'roomKey' => $room_key,
+            'room_key' => $room_key,
             'members' => [$user_key, $partner_key],
         ]);
         Cache::forever('chat:user-room:'.$user_key, $room_key);

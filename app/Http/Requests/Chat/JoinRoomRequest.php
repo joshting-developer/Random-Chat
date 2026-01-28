@@ -46,7 +46,7 @@ class JoinRoomRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'room_key' => $this->route('roomKey'),
+            'room_key' => $this->route('room_key'),
         ]);
     }
 }

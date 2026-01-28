@@ -15,7 +15,7 @@ class ChatRoomPageTest extends TestCase
         $userKey = (string) Str::uuid();
 
         Cache::forever('chat:room:'.$roomKey, [
-            'roomKey' => $roomKey,
+            'room_key' => $roomKey,
             'members' => [$userKey],
         ]);
 
@@ -25,7 +25,7 @@ class ChatRoomPageTest extends TestCase
         $response->assertOk();
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Chat/Chat')
-            ->where('roomKey', $roomKey)
+            ->where('room_key', $roomKey)
         );
     }
 
@@ -35,7 +35,7 @@ class ChatRoomPageTest extends TestCase
         $userKey = (string) Str::uuid();
 
         Cache::forever('chat:room:'.$roomKey, [
-            'roomKey' => $roomKey,
+            'room_key' => $roomKey,
             'members' => ['someone-else'],
         ]);
 
@@ -46,7 +46,7 @@ class ChatRoomPageTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Chat/RoomUnavailable')
             ->where('reason', 'forbidden')
-            ->where('roomKey', $roomKey)
+            ->where('room_key', $roomKey)
         );
     }
 
@@ -62,7 +62,7 @@ class ChatRoomPageTest extends TestCase
         $response->assertInertia(fn (Assert $page) => $page
             ->component('Chat/RoomUnavailable')
             ->where('reason', 'missing')
-            ->where('roomKey', $roomKey)
+            ->where('room_key', $roomKey)
         );
     }
 }

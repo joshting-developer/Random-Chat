@@ -48,8 +48,8 @@ class ChatPartnerLeft implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'roomKey' => $this->room_key,
-            'userKey' => $this->user_key,
+            'room_key' => $this->room_key,
+            'user_key' => $this->user_key,
         ];
     }
 }

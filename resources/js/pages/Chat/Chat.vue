@@ -13,27 +13,27 @@ type ChatMessage = {
 
 type ChatHistoryRecord = {
     id: number;
-    userKey: string;
+    user_key: string;
     message: string;
-    sentAt: string | null;
+    sent_at: string | null;
 };
 
 type ChatMessagePayload = {
-    roomKey: string;
-    userKey: string;
+    room_key: string;
+    user_key: string;
     message: string;
-    sentAt: string;
+    sent_at: string;
 };
 
 type JoinRoomResponse = {
     state: string;
-    roomKey: string;
+    room_key: string;
     history: ChatHistoryRecord[];
 };
 
 type ChatPartnerLeftPayload = {
-    roomKey: string;
-    userKey: string;
+    room_key: string;
+    user_key: string;
 };
 
 type EchoChannel = {
@@ -49,7 +49,7 @@ const { userKey } = useChatIdentity();
 const isLeaving = ref(false);
 const showPartnerLeft = ref(false);
 const props = defineProps<{
-    roomKey?: string | null;
+    room_key?: string | null;
 }>();
 
 const messages = ref<ChatMessage[]>([]);
@@ -62,7 +62,7 @@ const csrfToken =
             .querySelector('meta[name="csrf-token"]')
             ?.getAttribute('content')
         : null;
-const roomKey = computed(() => props.roomKey ?? null);
+const roomKey = computed(() => props.room_key ?? null);
 
 const getEcho = (): EchoInstance | null => {
     if (typeof window === 'undefined') {
@@ -116,9 +116,9 @@ onMounted(async () => {
     const history = Array.isArray(payload.history)
         ? payload.history.map((record) => ({
             id: record.id,
-            sender: record.userKey === userKey.value ? '你' : '對方',
+            sender: record.user_key === userKey.value ? '你' : '對方',
             content: record.message,
-            time: formatMessageTime(record.sentAt),
+            time: formatMessageTime(record.sent_at),
         }))
         : [];
 
@@ -143,7 +143,7 @@ onMounted(async () => {
     channel.listen('.chat.message', (payload) => {
         const messagePayload = payload as ChatMessagePayload | null;
 
-        if (!messagePayload || messagePayload.roomKey !== roomKey.value) {
+        if (!messagePayload || messagePayload.room_key !== roomKey.value) {
             return;
         }
 
@@ -151,9 +151,9 @@ onMounted(async () => {
             ...messages.value,
             {
                 id: Date.now(),
-                sender: messagePayload.userKey === userKey.value ? '你' : '對方',
+                sender: messagePayload.user_key === userKey.value ? '你' : '對方',
                 content: messagePayload.message,
-                time: formatMessageTime(messagePayload.sentAt),
+                time: formatMessageTime(messagePayload.sent_at),
             },
         ];
     });
@@ -161,7 +161,7 @@ onMounted(async () => {
     channel.listen('.chat.partner.left', (payload) => {
         const partnerPayload = payload as ChatPartnerLeftPayload | null;
 
-        if (!partnerPayload || partnerPayload.roomKey !== roomKey.value) {
+        if (!partnerPayload || partnerPayload.room_key !== roomKey.value) {
             return;
         }
 

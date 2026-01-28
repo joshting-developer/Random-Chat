@@ -33,8 +33,8 @@ useChatSocket({
         }
     },
     onMatchFound: (payload) => {
-        if (payload && typeof payload === 'object' && 'roomKey' in payload) {
-            router.visit(`/rooms/${payload.roomKey}`);
+        if (payload && typeof payload === 'object' && 'room_key' in payload) {
+            router.visit(`/rooms/${payload.room_key}`);
         }
     },
 });

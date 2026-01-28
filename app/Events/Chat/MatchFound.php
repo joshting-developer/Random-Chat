@@ -48,7 +48,7 @@ class MatchFound implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'roomKey' => $this->room_key,
+            'room_key' => $this->room_key,
         ];
     }
 }

@@ -22,11 +22,11 @@ class SendMessageTest extends TestCase
         $userKey = (string) Str::uuid();
 
         Cache::forever('chat:room:'.$roomKey, [
-            'roomKey' => $roomKey,
+            'room_key' => $roomKey,
             'members' => [$userKey],
         ]);
 
-        $response = $this->postJson(route('chat.rooms.messages', ['roomKey' => $roomKey]), [
+        $response = $this->postJson(route('chat.rooms.messages', ['room_key' => $roomKey]), [
             'user_key' => $userKey,
             'message' => 'Hello there!',
         ]);
@@ -60,11 +60,11 @@ class SendMessageTest extends TestCase
         $userKey = (string) Str::uuid();
 
         Cache::forever('chat:room:'.$roomKey, [
-            'roomKey' => $roomKey,
+            'room_key' => $roomKey,
             'members' => ['someone-else'],
         ]);
 
-        $response = $this->postJson(route('chat.rooms.messages', ['roomKey' => $roomKey]), [
+        $response = $this->postJson(route('chat.rooms.messages', ['room_key' => $roomKey]), [
             'user_key' => $userKey,
             'message' => 'Hello there!',
         ]);

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 
 const props = defineProps<{
     reason: 'missing' | 'forbidden';
-    roomKey?: string | null;
+    room_key?: string | null;
 }>();
 
 const title =
@@ -49,8 +49,8 @@ const description =
                 <p class="text-sm text-slate-600">
                     {{ description }}
                 </p>
-                <p v-if="roomKey" class="text-xs text-slate-400">
-                    房間號碼：<span class="font-semibold text-slate-600">{{ roomKey }}</span>
+                <p v-if="props.room_key" class="text-xs text-slate-400">
+                    房間號碼：<span class="font-semibold text-slate-600">{{ props.room_key }}</span>
                 </p>
             </header>
 

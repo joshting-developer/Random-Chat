@@ -55,10 +55,10 @@ class MatchController extends Controller
         ]);
     }
 
-    public function join(string $roomKey, JoinRoomRequest $request): JsonResponse
+    public function join(string $room_key, JoinRoomRequest $request): JsonResponse
     {
         $user_key = $request->validated('user_key');
-        $members = $this->chat_room_service->getRoomMembers($roomKey);
+        $members = $this->chat_room_service->getRoomMembers($room_key);
 
         if (! is_array($members) || ! in_array($user_key, $members, true)) {
             return response()->json([
@@ -70,24 +70,23 @@ class MatchController extends Controller
         event(new MatchQueue($user_key, ChatMatchState::Room));
 
         $history = $this->chat_service
-            ->getRoomHistory($roomKey)
+            ->getRoomHistory($room_key)
             ->map(fn ($record) => [
                 'id' => $record->id,
-                'userKey' => $record->user_key,
+                'user_key' => $record->user_key,
                 'message' => $record->message,
-                'sentAt' => $record->sent_at?->toIso8601String(),
+                'sent_at' => $record->sent_at?->toIso8601String(),
             ]);
 
         return response()->json([
             'state' => ChatMatchState::Room->value,
-            'roomKey' => $roomKey,
+            'room_key' => $room_key,
             'history' => $history,
         ]);
     }
 
-    public function leave(string $roomKey, LeaveRoomRequest $request): JsonResponse
+    public function leave(string $room_key, LeaveRoomRequest $request): JsonResponse
     {
-        $room_key = $roomKey;
         $user_key = $request->validated('user_key');
 
         $members = $this->chat_room_service->getRoomMembers($room_key);
@@ -115,9 +114,8 @@ class MatchController extends Controller
         ]);
     }
 
-    public function sendMessage(string $roomKey, SendMessageRequest $request): JsonResponse
+    public function sendMessage(string $room_key, SendMessageRequest $request): JsonResponse
     {
-        $room_key = $roomKey;
         $user_key = $request->validated('user_key');
         $message = $request->validated('message');
         $members = $this->chat_room_service->getRoomMembers($room_key);
@@ -141,7 +139,7 @@ class MatchController extends Controller
 
         return response()->json([
             'status' => 'sent',
-            'sentAt' => $sent_at,
+            'sent_at' => $sent_at,
         ]);
     }
 }

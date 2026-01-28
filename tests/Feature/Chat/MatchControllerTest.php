@@ -57,7 +57,7 @@ class MatchControllerTest extends TestCase
             ]);
 
         $response->assertOk();
-        $roomKey = $response->json('roomKey');
+        $roomKey = $response->json('room_key');
 
         $this->assertNotEmpty($roomKey);
         $this->assertSame('room', Cache::get('chat:state:'.$userAKey));
@@ -108,24 +108,24 @@ class MatchControllerTest extends TestCase
                 'user_key' => $userBKey,
             ]);
 
-        $roomKey = (string) $response->json('roomKey');
+        $roomKey = (string) $response->json('room_key');
 
         $this->withoutMiddleware(VerifyCsrfToken::class)
             ->withSession(['chat.user_key' => 'not-member'])
-            ->postJson(route('chat.rooms.join', ['roomKey' => $roomKey]), [
+            ->postJson(route('chat.rooms.join', ['room_key' => $roomKey]), [
                 'user_key' => 'not-member',
             ])
             ->assertNotFound();
 
         $this->withoutMiddleware(VerifyCsrfToken::class)
             ->withSession(['chat.user_key' => $userAKey])
-            ->postJson(route('chat.rooms.join', ['roomKey' => $roomKey]), [
+            ->postJson(route('chat.rooms.join', ['room_key' => $roomKey]), [
                 'user_key' => $userAKey,
             ])
             ->assertOk()
             ->assertJson([
                 'state' => 'room',
-                'roomKey' => $roomKey,
+                'room_key' => $roomKey,
                 'history' => [],
             ]);
     }
@@ -148,11 +148,11 @@ class MatchControllerTest extends TestCase
                 'user_key' => $userBKey,
             ]);
 
-        $roomKey = (string) $response->json('roomKey');
+        $roomKey = (string) $response->json('room_key');
 
         $this->withoutMiddleware(VerifyCsrfToken::class)
             ->withSession(['chat.user_key' => $userAKey])
-            ->postJson(route('chat.rooms.leave', ['roomKey' => $roomKey]), [
+            ->postJson(route('chat.rooms.leave', ['room_key' => $roomKey]), [
                 'user_key' => $userAKey,
             ])
             ->assertOk()
@@ -172,7 +172,7 @@ class MatchControllerTest extends TestCase
         $userKey = (string) Str::uuid();
 
         Cache::forever('chat:room:'.$roomKey, [
-            'roomKey' => $roomKey,
+            'room_key' => $roomKey,
             'members' => [$userKey],
         ]);
 
@@ -192,7 +192,7 @@ class MatchControllerTest extends TestCase
 
         $response = $this->withoutMiddleware(VerifyCsrfToken::class)
             ->withSession(['chat.user_key' => $userKey])
-            ->postJson(route('chat.rooms.join', ['roomKey' => $roomKey]), [
+            ->postJson(route('chat.rooms.join', ['room_key' => $roomKey]), [
                 'user_key' => $userKey,
             ]);
 

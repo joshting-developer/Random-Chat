@@ -12,28 +12,28 @@ Route::get('/', function () {
     return Inertia::render('Chat/Lobby');
 })->name('home');
 
-Route::get('/rooms/{roomKey}', function (string $roomKey, ChatRoomService $chat_room_service) {
+Route::get('/rooms/{room_key}', function (string $room_key, ChatRoomService $chat_room_service) {
     $session_user_key = (string) session('chat.user_key', '');
-    $members = $chat_room_service->getRoomMembers($roomKey);
+    $members = $chat_room_service->getRoomMembers($room_key);
 
     if (! $session_user_key || ! is_array($members)) {
         return Inertia::render('Chat/RoomUnavailable', [
             'reason' => 'missing',
-            'roomKey' => $roomKey,
+            'room_key' => $room_key,
         ]);
     }
 
     if (! in_array($session_user_key, $members, true)) {
         return Inertia::render('Chat/RoomUnavailable', [
             'reason' => 'forbidden',
-            'roomKey' => $roomKey,
+            'room_key' => $room_key,
         ]);
     }
 
     return Inertia::render('Chat/Chat', [
-        'roomKey' => $roomKey,
+        'room_key' => $room_key,
     ]);
-})->whereUuid('roomKey')->name('chat.room');
+})->whereUuid('room_key')->name('chat.room');
 
 Route::post('/chat/broadcasting/auth', [BroadcastAuthController::class, 'auth']);
 

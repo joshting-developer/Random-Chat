@@ -51,7 +51,7 @@ class ChatRoomService
     public function storeRoom(string $room_key, array $members): void
     {
         Cache::forever(self::ROOM_PREFIX.$room_key, [
-            'roomKey' => $room_key,
+            'room_key' => $room_key,
             'members' => $members,
         ]);
     }
