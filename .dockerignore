@@ -1,0 +1,9 @@
+.env
+.git
+node_modules
+volumes
+docker-compose.yml
+docker-deploy.yml
+npm-debug.log
+.DS_Store
+public/hot
