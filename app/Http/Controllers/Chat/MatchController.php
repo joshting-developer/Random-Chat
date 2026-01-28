@@ -7,6 +7,7 @@ use App\Events\Chat\ChatMessageSent;
 use App\Events\Chat\ChatPartnerLeft;
 use App\Events\Chat\MatchQueue;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Chat\HeartbeatRequest;
 use App\Http\Requests\Chat\JoinRoomRequest;
 use App\Http\Requests\Chat\LeaveRoomRequest;
 use App\Http\Requests\Chat\MatchRequest;
@@ -16,6 +17,7 @@ use App\Services\Chat\ChatRoomService;
 use App\Services\Chat\ChatService;
 use App\Services\Chat\MatchService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 class MatchController extends Controller
 {
@@ -52,6 +54,51 @@ class MatchController extends Controller
 
         return response()->json([
             'state' => ChatMatchState::Idle->value,
+        ]);
+    }
+
+    public function heartbeat(HeartbeatRequest $request): JsonResponse
+    {
+        $room_key = $request->validated('room_key');
+        $user_key = $request->validated('user_key');
+        $members = $this->chat_room_service->getRoomMembers($room_key);
+
+        if (! is_array($members) || ! in_array($user_key, $members, true)) {
+            return response()->json([
+                'message' => 'Room not found.',
+            ], 404);
+        }
+
+        Cache::put("chat:presence:{$user_key}", $room_key, now()->addSeconds(25));
+
+        $partner_key = collect($members)
+            ->first(fn (string $member) => $member !== $user_key);
+
+        if (! $partner_key) {
+            return response()->json([
+                'room_key' => $room_key,
+                'partner_online' => false,
+            ]);
+        }
+
+        $partner_room = Cache::get("chat:presence:{$partner_key}");
+        $partner_online = $partner_room === $room_key;
+
+        if (! $partner_online) {
+            foreach ($members as $member) {
+                $this->chat_room_service->clearUserRoom($member);
+                $this->chat_room_service->setUserState($member, ChatMatchState::Idle);
+                event(new MatchQueue($member, ChatMatchState::Idle));
+            }
+
+            $this->chat_room_service->clearRoom($room_key);
+            event(new ChatPartnerLeft($room_key, $partner_key));
+        }
+
+        return response()->json([
+            'room_key' => $room_key,
+            'partner_online' => $partner_online,
+            'partner_user_key' => $partner_key,
         ]);
     }
 

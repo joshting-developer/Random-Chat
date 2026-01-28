@@ -31,6 +31,12 @@ type JoinRoomResponse = {
     history: ChatHistoryRecord[];
 };
 
+type HeartbeatResponse = {
+    room_key: string;
+    partner_online: boolean;
+    partner_user_key?: string | null;
+};
+
 type ChatPartnerLeftPayload = {
     room_key: string;
     user_key: string;
@@ -48,6 +54,7 @@ type EchoInstance = {
 const { userKey } = useChatIdentity();
 const isLeaving = ref(false);
 const showPartnerLeft = ref(false);
+let heartbeatTimer: number | null = null;
 const props = defineProps<{
     room_key?: string | null;
 }>();
@@ -132,6 +139,39 @@ onMounted(async () => {
         ...history,
     ];
 
+    const heartbeat = async () => {
+        if (!roomKey.value || !userKey.value) {
+            return;
+        }
+
+        const heartbeatResponse = await fetch('/api/chat/heartbeat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                room_key: roomKey.value,
+                user_key: userKey.value,
+            }),
+        });
+
+        if (!heartbeatResponse.ok) {
+            return;
+        }
+
+        const heartbeatPayload = (await heartbeatResponse.json()) as HeartbeatResponse;
+
+        if (!heartbeatPayload.partner_online) {
+            showPartnerLeft.value = true;
+        }
+    };
+
+    await heartbeat();
+    heartbeatTimer = window.setInterval(heartbeat, 8000);
+
     const echo = getEcho();
 
     if (!echo) {
@@ -181,6 +221,11 @@ onBeforeUnmount(() => {
     }
 
     echo.leave(`chat-${roomKey.value}`);
+
+    if (heartbeatTimer) {
+        window.clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+    }
 });
 
 const sendMessage = () => {

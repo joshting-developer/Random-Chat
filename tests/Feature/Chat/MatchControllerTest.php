@@ -6,6 +6,7 @@ use App\Models\ChatHistory;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -13,11 +14,42 @@ class MatchControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * @var array<int, string>
+     */
+    private array $redis_queue = [];
+
     protected function setUp(): void
     {
         parent::setUp();
 
         Cache::flush();
+        $this->redis_queue = [];
+
+        Redis::shouldReceive('rpush')
+            ->andReturnUsing(function (string $key, string $value): int {
+                $this->redis_queue[] = $value;
+
+                return count($this->redis_queue);
+            });
+
+        Redis::shouldReceive('lrem')
+            ->andReturnUsing(function (string $key, int $count, string $value): int {
+                $before = count($this->redis_queue);
+                $this->redis_queue = array_values(
+                    array_filter(
+                        $this->redis_queue,
+                        static fn (string $member): bool => $member !== $value,
+                    ),
+                );
+
+                return $before - count($this->redis_queue);
+            });
+
+        Redis::shouldReceive('lrange')
+            ->andReturnUsing(function (): array {
+                return $this->redis_queue;
+            });
     }
 
     public function test_start_match_enqueues_user(): void
@@ -57,7 +89,7 @@ class MatchControllerTest extends TestCase
             ]);
 
         $response->assertOk();
-        $roomKey = $response->json('room_key');
+        $roomKey = Cache::get('chat:user-room:'.$userAKey);
 
         $this->assertNotEmpty($roomKey);
         $this->assertSame('room', Cache::get('chat:state:'.$userAKey));
@@ -79,7 +111,9 @@ class MatchControllerTest extends TestCase
 
         $response = $this->withoutMiddleware(VerifyCsrfToken::class)
             ->withSession(['chat.user_key' => $userKey])
-            ->postJson(route('chat.match.cancel'));
+            ->postJson(route('chat.match.cancel'), [
+                'user_key' => $userKey,
+            ]);
 
         $response->assertOk();
         $response->assertJson([
@@ -87,7 +121,7 @@ class MatchControllerTest extends TestCase
         ]);
 
         $this->assertSame('idle', Cache::get('chat:state:'.$userKey));
-        $this->assertNotContains($userKey, Cache::get('chat:queue', []));
+        $this->assertNotContains($userKey, $this->redis_queue);
     }
 
     public function test_join_room_requires_membership(): void
@@ -108,24 +142,27 @@ class MatchControllerTest extends TestCase
                 'user_key' => $userBKey,
             ]);
 
-        $roomKey = (string) $response->json('room_key');
+        $roomKey = Cache::get('chat:user-room:'.$userAKey);
+        $this->assertNotEmpty($roomKey);
+
+        $notMemberKey = (string) Str::uuid();
 
         $this->withoutMiddleware(VerifyCsrfToken::class)
-            ->withSession(['chat.user_key' => 'not-member'])
-            ->postJson(route('chat.rooms.join', ['room_key' => $roomKey]), [
-                'user_key' => 'not-member',
+            ->withSession(['chat.user_key' => $notMemberKey])
+            ->postJson(route('chat.rooms.join', ['room_key' => (string) $roomKey]), [
+                'user_key' => $notMemberKey,
             ])
             ->assertNotFound();
 
         $this->withoutMiddleware(VerifyCsrfToken::class)
             ->withSession(['chat.user_key' => $userAKey])
-            ->postJson(route('chat.rooms.join', ['room_key' => $roomKey]), [
+            ->postJson(route('chat.rooms.join', ['room_key' => (string) $roomKey]), [
                 'user_key' => $userAKey,
             ])
             ->assertOk()
             ->assertJson([
                 'state' => 'room',
-                'room_key' => $roomKey,
+                'room_key' => (string) $roomKey,
                 'history' => [],
             ]);
     }
@@ -148,11 +185,12 @@ class MatchControllerTest extends TestCase
                 'user_key' => $userBKey,
             ]);
 
-        $roomKey = (string) $response->json('room_key');
+        $roomKey = Cache::get('chat:user-room:'.$userAKey);
+        $this->assertNotEmpty($roomKey);
 
         $this->withoutMiddleware(VerifyCsrfToken::class)
             ->withSession(['chat.user_key' => $userAKey])
-            ->postJson(route('chat.rooms.leave', ['room_key' => $roomKey]), [
+            ->postJson(route('chat.rooms.leave', ['room_key' => (string) $roomKey]), [
                 'user_key' => $userAKey,
             ])
             ->assertOk()
